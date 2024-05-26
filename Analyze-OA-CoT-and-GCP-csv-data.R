@@ -52,11 +52,17 @@ cot_data <- cot_data %>%
 cot_data$horizontal_error <- mapply(haversine, cot_data$lon, cot_data$lat, gcp_data$Longitude[cot_data$nearest_gcp], gcp_data$Latitude[cot_data$nearest_gcp], MoreArgs = list(alt = 0))
 cot_data$vertical_error <- abs(cot_data$hae - gcp_data$Elevation[cot_data$nearest_gcp])
 
+# Calculate distance of user's selected pixel from Principal Point (center) of the image:
+cot_data$pixelDistFromPrincipalPoint <- sqrt(
+  (cot_data$imageWidth * (0.5 - cot_data$imageSelectedProportionX))^2 +
+  (cot_data$imageLength * (0.5 - cot_data$imageSelectedProportionY))^2
+)
+
 # Multiple regression models incorporating the new variables
-horizontal_model <- lm(horizontal_error ~ cameraSlantAngleDeg + make + model + focalLength + digitalZoomRatio + imageSelectedProportionX + imageSelectedProportionY + drone_to_gcp_horizontal_distance + drone_to_gcp_vertical_distance + distance_ratio, data = cot_data)
+horizontal_model <- lm(horizontal_error ~ cameraSlantAngleDeg + make + model + focalLength + digitalZoomRatio + imageSelectedProportionX + imageSelectedProportionY + pixelDistFromPrincipalPoint + drone_to_gcp_horizontal_distance + drone_to_gcp_vertical_distance + distance_ratio, data = cot_data)
 summary(horizontal_model)
 
-vertical_model <- lm(vertical_error ~ cameraSlantAngleDeg + make + model + focalLength + digitalZoomRatio + imageSelectedProportionX + imageSelectedProportionY + drone_to_gcp_horizontal_distance + drone_to_gcp_vertical_distance + distance_ratio, data = cot_data)
+vertical_model <- lm(vertical_error ~ cameraSlantAngleDeg + make + model + focalLength + digitalZoomRatio + imageSelectedProportionX + imageSelectedProportionY + pixelDistFromPrincipalPoint + drone_to_gcp_horizontal_distance + drone_to_gcp_vertical_distance + distance_ratio, data = cot_data)
 summary(vertical_model)
 
 # Plotting results for diagnostics and interpretation
@@ -69,6 +75,32 @@ ggplot(cot_data, aes(x = distance_ratio, y = horizontal_error)) +
   geom_point() +
   geom_smooth(method = "lm") +
   ggtitle("Horizontal Error by Distance Ratio")
+
+# Plot Horizontal Error by various camera settings and model characteristics
+ggplot(cot_data, aes(x = cameraSlantAngleDeg, y = horizontal_error)) +
+  geom_point() +
+  geom_smooth(method = "lm") +
+  ggtitle("Horizontal Error by Camera Slant Angle")
+
+ggplot(cot_data, aes(x = raySlantAngleDeg, y = horizontal_error)) +
+  geom_point() +
+  geom_smooth(method = "lm") +
+  ggtitle("Horizontal Error by Ray Slant Angle")
+
+ggplot(cot_data, aes(x = cameraRollAngleDeg, y = horizontal_error)) +
+  geom_point() +
+  geom_smooth(method = "lm") +
+  ggtitle("Horizontal Error by Camera Roll Angle")
+
+ggplot(cot_data, aes(x = pixelDistFromPrincipalPoint, y = horizontal_error)) +
+  geom_point() +
+  geom_smooth(method = "lm") +
+  ggtitle("Horizontal Error by Pixel Distance from Principal Point")
+
+ggplot(cot_data, aes(x = as.factor(model), y = horizontal_error)) +
+  geom_boxplot() +
+  ggtitle("Horizontal Error by Drone Model") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))  # Improve label readability for models
 
 # Save the enhanced dataset with calculated fields
 write.csv(cot_data, "enhanced_analyzed_cot_data.csv")
