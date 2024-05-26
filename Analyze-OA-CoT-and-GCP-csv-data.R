@@ -126,6 +126,40 @@ ggplot(cot_data, aes(x = as.factor(model), y = horizontal_error)) +
   ggtitle("Horizontal Error by Drone Model") +
   theme(axis.text.x = element_text(angle = 45, hjust = 1))  # Improve label readability for models
 
+# Calculate Circular Error Probable (CEP) and Mean Absolute Error for each drone model in data
+
+# Calculate CEP (50th percentile of horizontal errors) in meters for each drone model
+cep_by_model <- cot_data %>%
+  group_by(model) %>%
+  summarise(CEP = quantile(horizontal_error, 0.5))
+
+# Print CEP by model
+print(cep_by_model)
+
+# Calculate Mean Absolute Error in meters for horizontal error for each drone model
+mae_by_model <- cot_data %>%
+  group_by(model) %>%
+  summarise(MAE = mean(abs(horizontal_error)))
+
+# Print MAE by model
+print(mae_by_model)
+
+# Plotting CEP by Model
+ggplot(cep_by_model, aes(x = model, y = CEP)) +
+  geom_col(fill = "steelblue") +
+  ggtitle("Circular Error Probable (CEP) by Drone Model") +
+  xlab("Model") +
+  ylab("CEP (meters)") +
+  theme_minimal()
+
+# Plotting MAE by Model
+ggplot(mae_by_model, aes(x = model, y = MAE)) +
+  geom_col(fill = "darkred") +
+  ggtitle("Mean Absolute Error (MAE) by Drone Model") +
+  xlab("Model") +
+  ylab("MAE (meters)") +
+  theme_minimal()
+
 # Save the enhanced dataset with calculated fields
 write.csv(cot_data, "enhanced_analyzed_cot_data.csv")
 
