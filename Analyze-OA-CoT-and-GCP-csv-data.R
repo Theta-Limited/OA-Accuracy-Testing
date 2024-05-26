@@ -53,14 +53,14 @@ cot_data$horizontal_error <- mapply(function(i, j) {
 
 cot_data$vertical_error <- abs(cot_data$hae - gcp_data$Elevation[cot_data$nearest_gcp])
 
-# Regression model and plot
-model <- lm(horizontal_error ~ slantAngleDegrees, data = cot_data)
+# Regression model and plot using cameraSlantAngleDeg
+model <- lm(horizontal_error ~ cameraSlantAngleDeg, data = cot_data)
 summary(model)
 
-ggplot(cot_data, aes(x = slantAngleDegrees, y = horizontal_error)) +
+ggplot(cot_data, aes(x = cameraSlantAngleDeg, y = horizontal_error)) +
   geom_point() +
   geom_smooth(method = "lm") +
-  ggtitle("Dependency of Horizontal Error on Slant Angle Degrees")
+  ggtitle("Dependency of Horizontal Error on Camera Slant Angle Degrees")
 
 # Save analyzed data
 write.csv(cot_data, "analyzed_cot_data.csv")
@@ -70,11 +70,11 @@ cot_data$make <- as.factor(cot_data$make)
 cot_data$model <- as.factor(cot_data$model)
 
 # Multiple linear regression for horizontal error
-horizontal_model <- lm(horizontal_error ~ make + model + focalLength + digitalZoomRatio + imageSelectedProportionX + imageSelectedProportionY, data = cot_data)
+horizontal_model <- lm(horizontal_error ~ make + model + focalLength + digitalZoomRatio + imageSelectedProportionX + imageSelectedProportionY + cameraSlantAngleDeg, data = cot_data)
 summary(horizontal_model)
 
 # Multiple linear regression for vertical error
-vertical_model <- lm(vertical_error ~ make + model + focalLength + digitalZoomRatio + imageSelectedProportionX + imageSelectedProportionY, data = cot_data)
+vertical_model <- lm(vertical_error ~ make + model + focalLength + digitalZoomRatio + imageSelectedProportionX + imageSelectedProportionY + cameraSlantAngleDeg, data = cot_data)
 summary(vertical_model)
 
 # Plotting the results for horizontal error

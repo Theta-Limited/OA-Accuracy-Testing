@@ -27,7 +27,7 @@ file_safe_time = current_time.replace(':', '-').replace('.', '-')
 
 # CSV file to store the data
 csv_file = f'OA-CoT-Capture-{file_safe_time}.csv'
-fieldnames = ['lat', 'lon', 'hae', 'slantAngleDegrees', 'make', 'model', 'isCameraModelRecognized', 'lensType', 'k1', 'k2', 'k3', 'p1', 'p2', 'focalLength', 'digitalZoomRatio', 'imageWidth', 'imageLength', 'f_x', 'f_y', 'azimuthOffsetUserCorrection', 'imageSelectedProportionX', 'imageSelectedProportionY', 'yawOffsetDegSelectedPoint', 'pitchOffsetDegSelectedPoint', 'slantRange']
+fieldnames = ['lat', 'lon', 'hae', 'droneLatitude', 'droneLongitude', 'droneElevationHAE', 'cameraRollAngleDeg', 'cameraSlantAngleDeg', 'raySlantAngleDeg', 'make', 'model', 'isCameraModelRecognized', 'lensType', 'k1', 'k2', 'k3', 'p1', 'p2', 'focalLength', 'digitalZoomRatio', 'imageWidth', 'imageLength', 'f_x', 'f_y', 'azimuthOffsetUserCorrection', 'imageSelectedProportionX', 'imageSelectedProportionY', 'yawOffsetDegSelectedPoint', 'pitchOffsetDegSelectedPoint', 'slantRange']
 
 with open(csv_file, 'w', newline='') as file:
     writer = csv.DictWriter(file, fieldnames=fieldnames)
