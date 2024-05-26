@@ -34,64 +34,46 @@ cot_data <- read.csv("path/to/your/OA-CoT-Capture-file.csv")
 # Load GCP data from a ZIP file
 gcp_data <- read.csv(unzip("path/to/your/ground_control_points.zip", files = NULL))
 
-# Find nearest GCP for each CoT capture
-find_nearest_gcp <- function(lat, lon, alt) {
-  distances <- sapply(1:nrow(gcp_data), function(i) {
-    haversine(lon, lat, gcp_data$Longitude[i], gcp_data$Latitude[i], alt)
-  })
-  return(which.min(distances))
-}
-
-cot_data$nearest_gcp <- sapply(1:nrow(cot_data), function(i) {
-  find_nearest_gcp(cot_data$lat[i], cot_data$lon[i], cot_data$hae[i])
-})
+# Find nearest GCP for each CoT capture and calculate distances
+cot_data <- cot_data %>%
+  mutate(
+    nearest_gcp = sapply(seq_len(n()), function(i) {
+      min_idx <- which.min(haversine(lon[i], lat[i], gcp_data$Longitude, gcp_data$Latitude, 0))
+      return(min_idx)
+    }),
+    drone_to_gcp_horizontal_distance = mapply(function(i, j) {
+      haversine(droneLongitude[i], droneLatitude[i], gcp_data$Longitude[j], gcp_data$Latitude[j], 0)
+    }, i = seq_len(n()), j = nearest_gcp),
+    drone_to_gcp_vertical_distance = abs(droneElevationHAE - gcp_data$Elevation[nearest_gcp]),
+    distance_ratio = drone_to_gcp_horizontal_distance / drone_to_gcp_vertical_distance
+  )
 
 # Calculate circular and vertical errors
-cot_data$horizontal_error <- mapply(function(i, j) {
-  haversine(cot_data$lon[i], cot_data$lat[i], gcp_data$Longitude[j], gcp_data$Latitude[j], 0)
-}, i = 1:nrow(cot_data), j = cot_data$nearest_gcp)
-
+cot_data$horizontal_error <- mapply(haversine, cot_data$lon, cot_data$lat, gcp_data$Longitude[cot_data$nearest_gcp], gcp_data$Latitude[cot_data$nearest_gcp], MoreArgs = list(alt = 0))
 cot_data$vertical_error <- abs(cot_data$hae - gcp_data$Elevation[cot_data$nearest_gcp])
 
-# Regression model and plot using cameraSlantAngleDeg
-model <- lm(horizontal_error ~ cameraSlantAngleDeg, data = cot_data)
-summary(model)
-
-ggplot(cot_data, aes(x = cameraSlantAngleDeg, y = horizontal_error)) +
-  geom_point() +
-  geom_smooth(method = "lm") +
-  ggtitle("Dependency of Horizontal Error on Camera Slant Angle Degrees")
-
-# Save analyzed data
-write.csv(cot_data, "analyzed_cot_data.csv")
-
-# Convert categorical variables to factors
-cot_data$make <- as.factor(cot_data$make)
-cot_data$model <- as.factor(cot_data$model)
-
-# Multiple linear regression for horizontal error
-horizontal_model <- lm(horizontal_error ~ make + model + focalLength + digitalZoomRatio + imageSelectedProportionX + imageSelectedProportionY + cameraSlantAngleDeg, data = cot_data)
+# Multiple regression models incorporating the new variables
+horizontal_model <- lm(horizontal_error ~ cameraSlantAngleDeg + make + model + focalLength + digitalZoomRatio + imageSelectedProportionX + imageSelectedProportionY + drone_to_gcp_horizontal_distance + drone_to_gcp_vertical_distance + distance_ratio, data = cot_data)
 summary(horizontal_model)
 
-# Multiple linear regression for vertical error
-vertical_model <- lm(vertical_error ~ make + model + focalLength + digitalZoomRatio + imageSelectedProportionX + imageSelectedProportionY + cameraSlantAngleDeg, data = cot_data)
+vertical_model <- lm(vertical_error ~ cameraSlantAngleDeg + make + model + focalLength + digitalZoomRatio + imageSelectedProportionX + imageSelectedProportionY + drone_to_gcp_horizontal_distance + drone_to_gcp_vertical_distance + distance_ratio, data = cot_data)
 summary(vertical_model)
 
-# Plotting the results for horizontal error
-ggplot(cot_data, aes(x = focalLength, y = horizontal_error)) +
+# Plotting results for diagnostics and interpretation
+ggplot(cot_data, aes(x = drone_to_gcp_horizontal_distance, y = horizontal_error)) +
   geom_point() +
   geom_smooth(method = "lm") +
-  facet_wrap(~make) +
-  ggtitle("Horizontal Error by Focal Length and Make")
+  ggtitle("Horizontal Error by Drone to GCP Horizontal Distance")
 
-# Plotting the results for vertical error
-ggplot(cot_data, aes(x = focalLength, y = vertical_error)) +
+ggplot(cot_data, aes(x = distance_ratio, y = horizontal_error)) +
   geom_point() +
   geom_smooth(method = "lm") +
-  facet_wrap(~make) +
-  ggtitle("Vertical Error by Focal Length and Make")
+  ggtitle("Horizontal Error by Distance Ratio")
 
-# To assess model diagnostics, plot residuals
+# Save the enhanced dataset with calculated fields
+write.csv(cot_data, "enhanced_analyzed_cot_data.csv")
+
+# Diagnostic plots for the regression model
 par(mfrow=c(2,2))
 plot(horizontal_model)
 plot(vertical_model)
