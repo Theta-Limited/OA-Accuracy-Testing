@@ -1,3 +1,7 @@
+# Copyright 2024 Theta Informatics LLC
+# Provided under MIT license software license
+# Modification and Redistribution permitted while above notice is preserved
+
 library(dplyr)
 library(ggplot2)
 
