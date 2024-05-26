@@ -35,7 +35,7 @@ with open(csv_file, 'w', newline='') as file:
 
     try:
         while True:
-            data, _ = sock.recvfrom(1024)  # Buffer size of 1024 bytes
+            data, _ = sock.recvfrom(2048)  # Buffer size of 2048 bytes
             data = data.decode('utf-8')
 
             # Parse XML data
