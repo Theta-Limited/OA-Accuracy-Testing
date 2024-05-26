@@ -62,11 +62,31 @@ cot_data$pixelDistFromPrincipalPoint <- sqrt(
   (cot_data$imageLength * (0.5 - cot_data$imageSelectedProportionY))^2
 )
 
+# If only one make or model of drone is present in data, omit this
+# categorical variable from regression model(s)
+# Dynamically build model formula based on the data
+model_components <- c("cameraSlantAngleDeg", "raySlantAngleDeg", "focalLength", "digitalZoomRatio", 
+                      "imageSelectedProportionX", "imageSelectedProportionY", 
+                      "pixelDistFromPrincipalPoint", "drone_to_gcp_horizontal_distance", 
+                      "drone_to_gcp_vertical_distance", "distance_ratio")
+# Add 'make' and 'model' conditionally
+if(length(unique(cot_data$make)) > 1) {
+  cot_data$make <- factor(cot_data$make)
+  model_components <- c(model_components, "make")
+}
+if(length(unique(cot_data$model)) > 1) {
+  cot_data$model <- factor(cot_data$model)
+  model_components <- c(model_components, "model")
+}
+hoizontal_model_formula <- as.formula(paste("horizontal_error ~", paste(model_components, collapse = " + ")))
+vertical_model_formula <- as.formula(paste("vertical_error ~", paste(model_components, collapse = " + ")))
+
+
 # Multiple regression models incorporating the new variables
-horizontal_model <- lm(horizontal_error ~ cameraSlantAngleDeg + make + model + focalLength + digitalZoomRatio + imageSelectedProportionX + imageSelectedProportionY + pixelDistFromPrincipalPoint + drone_to_gcp_horizontal_distance + drone_to_gcp_vertical_distance + distance_ratio, data = cot_data)
+horizontal_model <- lm(hoizontal_model_formula, data = cot_data)
 summary(horizontal_model)
 
-vertical_model <- lm(vertical_error ~ cameraSlantAngleDeg + make + model + focalLength + digitalZoomRatio + imageSelectedProportionX + imageSelectedProportionY + pixelDistFromPrincipalPoint + drone_to_gcp_horizontal_distance + drone_to_gcp_vertical_distance + distance_ratio, data = cot_data)
+vertical_model <- lm(vertical_model_formula, data = cot_data)
 summary(vertical_model)
 
 # Plotting results for diagnostics and interpretation
