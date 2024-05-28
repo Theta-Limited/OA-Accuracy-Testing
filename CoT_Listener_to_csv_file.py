@@ -47,7 +47,15 @@ with open(csv_file, 'w', newline='') as file:
 
             # Extract data fields
             point = root.find('point')
+
+            # Check if the openAthenaCalculationInfo field is present
             calc_info = root.find('.//openAthenaCalculationInfo')
+
+            # Skip this message if openAthenaCalculationInfo is not found
+            # CoT came from a different program than OpenAthena Android (debug)
+            # Remove next two lines if desirable to capture all CoT
+            if calc_info is None:
+                continue
 
             if point is not None and calc_info is not None:
                 data_row = {
@@ -57,6 +65,7 @@ with open(csv_file, 'w', newline='') as file:
                 }
 
                 # Extract all attributes from openAthenaCalculationInfo
+                # remove this loop if desirable to capture all CoT
                 for attr in fieldnames[3:]:  # Skip lat, lon, hae which are already handled
                     data_row[attr] = calc_info.get(attr)
 
