@@ -49,7 +49,7 @@ cot_data <- cot_data %>%
       haversine(droneLongitude[i], droneLatitude[i], gcp_data$Longitude[j], gcp_data$Latitude[j], 0)
     }, i = seq_len(n()), j = nearest_gcp),
     drone_to_gcp_vertical_distance = abs(droneElevationHAE - gcp_data$Elevation[nearest_gcp]),
-    distance_ratio = drone_to_gcp_horizontal_distance / drone_to_gcp_vertical_distance
+    distance_ratio =  drone_to_gcp_vertical_distance / drone_to_gcp_horizontal_distance
   )
 
 # Calculate circular and vertical errors
@@ -65,9 +65,9 @@ cot_data$pixelDistFromPrincipalPoint <- sqrt(
 # If only one make or model of drone is present in data, omit this
 # categorical variable from regression model(s)
 # Dynamically build model formula based on the data
-model_components <- c("cameraSlantAngleDeg", "raySlantAngleDeg", "focalLength", "digitalZoomRatio", 
-                      "imageSelectedProportionX", "imageSelectedProportionY", 
-                      "pixelDistFromPrincipalPoint", "drone_to_gcp_horizontal_distance", 
+model_components <- c("cameraSlantAngleDeg", "raySlantAngleDeg", "focalLength", "digitalZoomRatio",
+                      "imageSelectedProportionX", "imageSelectedProportionY",
+                      "pixelDistFromPrincipalPoint", "drone_to_gcp_horizontal_distance",
                       "drone_to_gcp_vertical_distance", "distance_ratio")
 # Add 'make' and 'model' conditionally
 if(length(unique(cot_data$make)) > 1) {
