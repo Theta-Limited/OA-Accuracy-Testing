@@ -42,6 +42,9 @@ with open(csv_file, 'w', newline='') as file:
             data, _ = sock.recvfrom(2048)  # Buffer size of 2048 bytes
             data = data.decode('utf-8')
 
+            print("Received CoT:")
+            print(data)
+
             # Parse XML data
             root = ET.fromstring(data)
 
