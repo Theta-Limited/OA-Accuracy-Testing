@@ -40,7 +40,11 @@ with open(csv_file, 'w', newline='') as file:
     try:
         while True:
             data, _ = sock.recvfrom(2048)  # Buffer size of 2048 bytes
-            data = data.decode('utf-8')
+            try:
+                data = data.decode('utf-8')
+            except UnicodeDecodeError:
+                print("Received data could not be decoded as UTF-8")
+                continue  # Skip to the next iteration of the loop if decoding fails
 
             print("Received CoT:")
             print(data)
