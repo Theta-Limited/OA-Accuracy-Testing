@@ -45,6 +45,9 @@ with open(csv_file, 'w', newline='') as file:
             except UnicodeDecodeError:
                 print("Received data could not be decoded as UTF-8")
                 continue  # Skip to the next iteration of the loop if decoding fails
+            if not data.strip():
+                print("CoT message was empty")
+                continue # Skip to next iteration of loop if empty
 
             print("Received CoT:")
             print(data)
