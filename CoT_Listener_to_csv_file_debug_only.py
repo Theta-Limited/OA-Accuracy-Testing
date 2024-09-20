@@ -8,8 +8,7 @@ import socket
 import struct
 import xml.etree.ElementTree as ET
 import csv
-from datetime import datetime
-import pytz
+from datetime import datetime, timezone
 
 # Multicast group details
 MCAST_GRP = '239.2.3.1'
@@ -24,7 +23,7 @@ mreq = struct.pack("4sl", socket.inet_aton(MCAST_GRP), socket.INADDR_ANY)
 sock.setsockopt(socket.IPPROTO_IP, socket.IP_ADD_MEMBERSHIP, mreq)
 
 # Get the current time in ISO8601 format with timezone
-current_time = datetime.now(pytz.utc).isoformat()
+current_time = datetime.now(timezone.utc).isoformat()
 # Replace colons and periods to make it a legal filename on Windows
 file_safe_time = current_time.replace(':', '-').replace('.', '-')
 

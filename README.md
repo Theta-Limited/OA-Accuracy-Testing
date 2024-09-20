@@ -19,7 +19,6 @@ The Python script `CoT_Listener_to_csv_file.py` is designed to capture multicast
 ### Requirements
 
 - Python 3
-- `pytz` library (installable with the command `pip3 install pytz`)
 
 ### Usage
 
