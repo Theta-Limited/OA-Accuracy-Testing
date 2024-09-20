@@ -95,6 +95,12 @@ ggplot(cot_data, aes(x = drone_to_gcp_horizontal_distance, y = horizontal_error)
   geom_smooth(method = "lm") +
   ggtitle("Horizontal Error by Drone to GCP Horizontal Distance")
 
+# Plotting results for diagnostics and interpretation
+ggplot(cot_data, aes(x = drone_to_gcp_vertical_distance, y = horizontal_error)) +
+  geom_point() +
+  geom_smooth(method = "lm") +
+  ggtitle("Horizontal Error by Drone to GCP Vertical Distance")
+
 ggplot(cot_data, aes(x = distance_ratio, y = horizontal_error)) +
   geom_point() +
   geom_smooth(method = "lm") +
@@ -151,6 +157,11 @@ ggplot(cep_by_model, aes(x = model, y = CEP)) +
   xlab("Model") +
   ylab("CEP (meters)") +
   theme_minimal()
+
+# Calculate CE90% (90th percentile of horizontal errors) in meters for each drone model
+ce90_by_model <- cot_data %>%
+  group_by(model) %>%
+  summarise(CE90 = quantile(horizontal_error, 0.9))
 
 # Plotting MAE by Model
 ggplot(mae_by_model, aes(x = model, y = MAE)) +
