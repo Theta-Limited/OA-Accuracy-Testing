@@ -32,7 +32,7 @@ file_safe_time = current_time.replace(':', '-').replace('.', '-')
 csv_file = f'OA-CoT-Capture-{file_safe_time}.csv'
 
 # Column names for the CSV file
-oa_core_fieldnames = ['EXIF DateTime', 'Processed DateTime', 'lat', 'lon', 'hae', 'ce', 'droneLatitude', 'droneLongitude', 'droneElevationHAE', 'cameraRollAngleDeg', 'cameraSlantAngleDeg', 'raySlantAngleDeg', 'make', 'model', 'isCameraModelRecognized', 'lensType', 'focalLength', 'digitalZoomRatio', 'imageWidth', 'imageHeight', 'f_x', 'f_y', 'azimuthOffsetUserCorrection', 'imageSelectedProportionX', 'imageSelectedProportionY', 'yawOffsetDegSelectedPoint', 'pitchOffsetDegSelectedPoint', 'slantRange']
+oa_core_fieldnames = ['EXIF DateTime', 'Processed DateTime', 'lat', 'lon', 'hae', 'ce', 'droneLatitude', 'droneLongitude', 'droneElevationHAE', 'cameraRollAngleDeg', 'cameraSlantAngleDeg', 'raySlantAngleDeg', 'make', 'model', 'isCameraModelRecognized', 'lensType', 'focalLength', 'digitalZoomRatio', 'gimbalPitchDegree', 'gimbalYawDegree', 'imageWidth', 'imageHeight', 'f_x', 'f_y', 'azimuthOffsetUserCorrection', 'imageSelectedProportionX', 'imageSelectedProportionY', 'yawOffsetDegSelectedPoint', 'pitchOffsetDegSelectedPoint', 'slantRange']
 oa_android_debug_fieldnames = ['EXIF DateTime', 'Processed DateTime', 'lat', 'lon', 'hae', 'ce', 'droneLatitude', 'droneLongitude', 'droneElevationHAE', 'cameraRollAngleDeg', 'cameraSlantAngleDeg', 'raySlantAngleDeg', 'make', 'model', 'isCameraModelRecognized', 'lensType', 'k1', 'k2', 'k3', 'p1', 'p2', 'focalLength', 'digitalZoomRatio', 'imageWidth', 'imageLength', 'f_x', 'f_y', 'azimuthOffsetUserCorrection', 'imageSelectedProportionX', 'imageSelectedProportionY', 'yawOffsetDegSelectedPoint', 'pitchOffsetDegSelectedPoint', 'slantRange']
 fieldnames = None
 

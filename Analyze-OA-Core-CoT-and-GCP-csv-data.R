@@ -32,6 +32,27 @@ radius_at_lat_lon <- function(lat, lon) {
   return(sqrt(r))
 }
 
+### New Functions for Bearing and Elevation Angle ###
+
+# Function to calculate bearing (azimuth) from point A to point B
+bearing <- function(lon1, lat1, lon2, lat2) {
+  delta_lon <- (lon2 - lon1) * pi / 180
+  lat1 <- lat1 * pi / 180
+  lat2 <- lat2 * pi / 180
+  x <- sin(delta_lon) * cos(lat2)
+  y <- cos(lat1) * sin(lat2) - sin(lat1) * cos(lat2) * cos(delta_lon)
+  initial_bearing <- atan2(x, y) * 180 / pi
+  bearing_deg <- (initial_bearing + 360) %% 360
+  return(bearing_deg)
+}
+
+# Function to calculate elevation angle (pitch) from horizontal and vertical distances
+elevation_angle <- function(horizontal_distance, vertical_distance) {
+  angle_rad <- atan(vertical_distance / horizontal_distance)
+  angle_deg <- angle_rad * 180 / pi
+  return(angle_deg)
+}
+
 # Load CoT data from CSV
 cot_data <- read.csv("/PATH/TO/CORE/COT/CAPTURE/HERE/OA-CoT-Capture-2024-11-13T19-44-52-395195+00-00.csv")
 
@@ -62,6 +83,66 @@ cot_data$pixelDistFromPrincipalPoint <- sqrt(
   (cot_data$imageHeight * (0.5 - cot_data$imageSelectedProportionY))^2
 )
 
+### New Code to Calculate Azimuth and Pitch Differences ###
+
+# Calculate actual azimuth (bearing) and pitch (elevation angle) from drone to GCP
+cot_data <- cot_data %>%
+  mutate(
+    actual_azimuth = bearing(lon, lat, gcp_data$Longitude[nearest_gcp], gcp_data$Latitude[nearest_gcp]),
+    actual_pitch = elevation_angle(drone_to_gcp_horizontal_distance, drone_to_gcp_vertical_distance),
+    # Extract reported gimbal yaw and pitch
+    reported_gimbal_yaw = gimbalYawDegree,
+    reported_gimbal_pitch = gimbalPitchDegree,
+    # Calculate differences
+    difference_yaw = (actual_azimuth - reported_gimbal_yaw + 180) %% 360 - 180,  # Normalize to [-180, 180]
+    difference_pitch = actual_pitch - reported_gimbal_pitch
+  )
+
+# Remove outliers using the IQR method for yaw differences
+yaw_Q1 <- quantile(cot_data$difference_yaw, 0.25, na.rm = TRUE)
+yaw_Q3 <- quantile(cot_data$difference_yaw, 0.75, na.rm = TRUE)
+yaw_IQR <- yaw_Q3 - yaw_Q1
+yaw_lower_bound <- yaw_Q1 - 1.5 * yaw_IQR
+yaw_upper_bound <- yaw_Q3 + 1.5 * yaw_IQR
+
+# Remove outliers using the IQR method for pitch differences
+pitch_Q1 <- quantile(cot_data$difference_pitch, 0.25, na.rm = TRUE)
+pitch_Q3 <- quantile(cot_data$difference_pitch, 0.75, na.rm = TRUE)
+pitch_IQR <- pitch_Q3 - pitch_Q1
+pitch_lower_bound <- pitch_Q1 - 1.5 * pitch_IQR
+pitch_upper_bound <- pitch_Q3 + 1.5 * pitch_IQR
+
+# Filter out outliers
+cot_data_filtered <- cot_data %>%
+  filter(
+    difference_yaw >= yaw_lower_bound,
+    difference_yaw <= yaw_upper_bound,
+    difference_pitch >= pitch_lower_bound,
+    difference_pitch <= pitch_upper_bound
+  )
+
+# Calculate average differences excluding outliers
+average_difference_yaw <- mean(cot_data_filtered$difference_yaw, na.rm = TRUE)
+average_difference_pitch <- mean(cot_data_filtered$difference_pitch, na.rm = TRUE)
+
+# Print the average differences
+print(paste("Average Yaw Difference (degrees):", round(average_difference_yaw, 2)))
+print(paste("Average Pitch Difference (degrees):", round(average_difference_pitch, 2)))
+
+# (Optional) Plot the differences to visualize
+ggplot(cot_data_filtered, aes(x = difference_yaw)) +
+  geom_histogram(binwidth = 5, fill = "skyblue", color = "black") +
+  ggtitle("Histogram of Yaw Differences") +
+  xlab("Yaw Difference (degrees)") +
+  ylab("Frequency")
+
+ggplot(cot_data_filtered, aes(x = difference_pitch)) +
+  geom_histogram(binwidth = 1, fill = "salmon", color = "black") +
+  ggtitle("Histogram of Pitch Differences") +
+  xlab("Pitch Difference (degrees)") +
+  ylab("Frequency")
+
+### End of New Code ###
 
 # Dynamically build model formula based on the data
 ## model_components <- c("cameraSlantAngleDeg", "raySlantAngleDeg", "focalLength", "digitalZoomRatio",
@@ -203,6 +284,6 @@ ggplot(median_error_by_model, aes(x = model, y = Median_Horizontal_Error)) +
 write.csv(cot_data, "enhanced_analyzed_cot_data.csv")
 
 # Diagnostic plots for the regression model
-ppar(mfrow=c(2,2))
+par(mfrow=c(2,2))
 plot(horizontal_model)
 plot(vertical_model)
