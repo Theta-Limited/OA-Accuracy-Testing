@@ -54,10 +54,10 @@ radius_at_lat_lon <- function(lat, lon) {
 ## }
 
 # Load CoT data from CSV
-cot_data <- read.csv("~/Dropbox/2023-2024/Livery/HoverflyHQVisit24/OA-CoT-Capture_HoverflyHQVisit24_all_combined.csv", stringsAsFactors = FALSE)
+cot_data <- read.csv("/PATH/TO/OA-CoT-Capture.csv", stringsAsFactors = FALSE)
 
 # Load GCP data from a ZIP file
-gcp_data <- read.csv(unzip("~/Dropbox/2023-2024/Livery/HoverflyHQVisit24/ConesHFHQ_CSV_FIXED.zip", files = NULL), stringsAsFactors = FALSE)
+gcp_data <- read.csv(unzip("/PATH/TO/ground_control_points.csv.zip", files = NULL), stringsAsFactors = FALSE)
 
 # Find nearest GCP for each CoT capture and calculate distances
 cot_data <- cot_data %>%
