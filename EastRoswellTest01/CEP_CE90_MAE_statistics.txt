@@ -1,0 +1,32 @@
+> # Calculate CEP (50th percentile of horizontal errors) in meters for each drone model
+> cep_by_model <- cot_data %>%
++   group_by(model) %>%
++   summarise(CEP = quantile(horizontal_error, 0.5))
+> # Print CEP by model
+> print(cep_by_model)
+# A tibble: 1 × 2
+  model    CEP
+  <chr>  <dbl>
+1 FC2204  8.28
+
+> # Calculate CE90 (90th percentile of horizontal errors) in meters for each drone model
+> ce90_by_model <- cot_data %>%
++   group_by(model) %>%
++   summarise(CE90 = quantile(horizontal_error, 0.90))
+> # Print CE90 by model
+> print(ce90_by_model)
+# A tibble: 1 × 2
+  model   CE90
+  <chr>  <dbl>
+1 FC2204  12.0
+
+> # Calculate Mean Absolute Error in meters for horizontal error for each drone model
+> mae_by_model <- cot_data %>%
++   group_by(model) %>%
++   summarise(MAE = mean(abs(horizontal_error)))
+> # Print MAE by model
+> print(mae_by_model)
+# A tibble: 1 × 2
+  model    MAE
+  <chr>  <dbl>
+1 FC2204  8.24
