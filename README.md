@@ -24,12 +24,20 @@ The Python script `CoT_Listener_Athena_Filtered_to_csv_file_with_calculation_inf
 
 Run the script on a system configured to receive UDP multicast messages on the network. The script listens to the multicast group `239.2.3.1` at port `6969` and outputs data to a CSV file named in the format `OA-CoT-Capture-{timestamp}.csv`.
 
+NOTE: you will need to  specify either `android` or `core` for the listening mode as a command line argument for the script. The script can only listen in one mode at a time.
+
+E.g. for listening for CoT messages from OpenAthena for Android
 ```bash
-python3 CoT_Listener_Athena_Filtered_to_csv_file_with_calculation_info.py
+python3 CoT_Listener_Athena_Filtered_to_csv_file_with_calculation_info.py android
+```
+
+E.g. for listening for CoT messages from OpenAthena Core
+```bash
+python3 CoT_Listener_Athena_Filtered_to_csv_file_with_calculation_info.py core
 ```
 
 
-### Data collection in the field
+### Data collection methodology in the field
 
 1. **Mark the location of outdoor ground control points (GCP) using [SW Maps](http://swmaps.softwel.com.np/)**: Ideally, use an enhanced accuracy GPS such as the [Ardusimple RTK Calibrated Surveyor Kit](https://www.ardusimple.com/user-manual-rtk-calibrated-surveyor-kit/) to mark points with greater accuracy than regular GPS. Choose an outdoor area with significant open space for testing. Prepare markers for GCPs which may be easily-visible from a distance by drone, such as traffic cones or [these Soccer Disc Cones](https://www.amazon.com/dp/B095K6S53Y). In the SW Maps app, create a new project and a new layer. Save the location of each ground control point using SW maps' `Record Feature` function, ensuring all GCP features are recorded within the only layer of your new Project. For best results, make sure each ground control point is at least 30 meters from its nearest neighboring point.
 2. **Export the list of outdoor ground control points as a Zipped comma separated values (CSV) file.** Share/Export your project in SW maps containing the list of control points as a Zipped CSV file
