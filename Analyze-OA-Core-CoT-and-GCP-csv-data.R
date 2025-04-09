@@ -178,6 +178,60 @@ ggplot(cot_data, aes(x = drone_to_gcp_horizontal_distance, y = horizontal_error)
   geom_smooth(method = "lm") +
   ggtitle("Horizontal Error by Drone to GCP Horizontal Distance")
 
+# Calculate the slope of horizontal error by horizontal distance
+# This represents how much circular error is introduced per meter of distance
+
+# Perform a simple linear regression
+slope_model <- lm(horizontal_error ~ drone_to_gcp_horizontal_distance, data = cot_data)
+
+# Extract the slope coefficient
+slope <- coef(slope_model)["drone_to_gcp_horizontal_distance"]
+
+# Extract the confidence interval for the slope
+conf_interval <- confint(slope_model, "drone_to_gcp_horizontal_distance", level = 0.95)
+
+# Print the slope with interpretation
+cat(sprintf("Slope of Horizontal Error by Horizontal Distance: %.4f meters per meter\n", slope))
+cat(sprintf("95%% Confidence Interval for the Slope: [%.4f, %.4f] meters per meter\n", conf_interval[1], conf_interval[2]))
+
+# Optionally, plot the regression line and display the slope on the plot
+ggplot(cot_data, aes(x = drone_to_gcp_horizontal_distance, y = horizontal_error)) +
+  geom_point(alpha = 0.6) +
+  geom_smooth(method = "lm", se = TRUE, color = "blue") +
+  ggtitle("Horizontal Error vs. Horizontal Distance with Regression Line") +
+  xlab("Drone to GCP Horizontal Distance (meters)") +
+  ylab("Horizontal Error (meters)") +
+  annotate("text",
+           x = Inf, y = Inf,
+           label = sprintf("Slope: %.4f m/m", slope),
+           hjust = 1.1, vjust = 2,
+           size = 5,
+           color = "blue") +
+  theme_minimal()
+
+# Convert EXIF.DateTime to POSIXct Date-Time Object
+# Assuming EXIF.DateTime is in ISO 8601 format, e.g., "2024-11-15T13:41:50Z"
+cot_data$EXIF_DateTime_POSIXct <- as.POSIXct(cot_data$EXIF.DateTime, format = "%Y-%m-%dT%H:%M:%SZ", tz = "UTC")
+
+# Handle any parsing issues by checking for NA values
+num_na_dates <- sum(is.na(cot_data$EXIF_DateTime_POSIXct))
+if (num_na_dates > 0) {
+  warning(paste("There are", num_na_dates, "rows with invalid EXIF.DateTime formats. These will be excluded from the time-based plot."))
+}
+
+# Create the plot: Horizontal Error vs. EXIF.DateTime
+ggplot(cot_data, aes(x = EXIF_DateTime_POSIXct, y = horizontal_error / drone_to_gcp_horizontal_distance)) +
+  geom_point(alpha = 0.6, color = "darkblue") +
+  #geom_smooth(method = "loess", se = TRUE, color = "red") +
+  ggtitle("Horizontal Error Over Time") +
+  xlab("EXIF DateTime") +
+  ylab("Horizontal Error (meters) / GCP Horizontal Distance") +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),  # Improve readability of date labels
+    plot.title = element_text(hjust = 0.5)              # Center the plot title
+  )
+
 # Plotting results for diagnostics and interpretation
 ggplot(cot_data, aes(x = drone_to_gcp_vertical_distance, y = horizontal_error)) +
   geom_point() +
