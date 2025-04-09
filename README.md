@@ -7,14 +7,14 @@ This repository contains tools for capturing and analyzing Cursor on Target (CoT
 
 ## Contents
 
-1. **CoT_Listener_to_csv_file.py**: A Python script to listen for multicast UDP messages and dump the relevant data into a CSV file.
+1. **CoT_Listener_Athena_Filtered_to_csv_file_with_calculation_info.py**: A Python script to listen for multicast UDP messages and dump the relevant data into a CSV file.
 2. **Analyze-OA-CoT-and-GCP-csv-data.R**: An R script to analyze the CoT data against GCP data to understand the accuracy and performance of the terrain-raycast technique.
 
-## CoT_Listener_to_csv_file.py
+## CoT_Listener_Athena_Filtered_to_csv_file_with_calculation_info.py
 
 ### Overview
 
-The Python script `CoT_Listener_to_csv_file.py` is designed to capture multicast UDP messages sent by [debug builds of OpenAthena for Android](https://github.com/Theta-Limited/OpenAthenaAndroid/blob/0f98c4e8bfaedc010b8845470fd3493d28541d5e/app/src/main/java/com/openathena/MainActivity.java#L111), which include various calculation details and coordinates. The script outputs this data into a timestamped CSV file for later analysis.
+The Python script `CoT_Listener_Athena_Filtered_to_csv_file_with_calculation_info.py` is designed to capture multicast UDP messages sent by [debug builds of OpenAthena for Android](https://github.com/Theta-Limited/OpenAthenaAndroid/blob/0f98c4e8bfaedc010b8845470fd3493d28541d5e/app/src/main/java/com/openathena/MainActivity.java#L111) or [OpenAthena Core](https://theta.limited/openathena-core/), which include various calculation details and coordinates. The script outputs this data into a timestamped CSV file for later analysis.
 
 ### Requirements
 
@@ -25,14 +25,14 @@ The Python script `CoT_Listener_to_csv_file.py` is designed to capture multicast
 Run the script on a system configured to receive UDP multicast messages on the network. The script listens to the multicast group `239.2.3.1` at port `6969` and outputs data to a CSV file named in the format `OA-CoT-Capture-{timestamp}.csv`.
 
 ```bash
-python3 CoT_Listener_to_csv_file.py
+python3 CoT_Listener_Athena_Filtered_to_csv_file_with_calculation_info.py
 ```
 
 
 ### Data collection in the field
 
 1. **Mark the location of outdoor ground control points (GCP) using [SW Maps](http://swmaps.softwel.com.np/)**: Ideally, use an enhanced accuracy GPS such as the [Ardusimple RTK Calibrated Surveyor Kit](https://www.ardusimple.com/user-manual-rtk-calibrated-surveyor-kit/) to mark points with greater accuracy than regular GPS. Choose an outdoor area with significant open space for testing. Prepare markers for GCPs which may be easily-visible from a distance by drone, such as traffic cones or [these Soccer Disc Cones](https://www.amazon.com/dp/B095K6S53Y). In the SW Maps app, create a new project and a new layer. Save the location of each ground control point using SW maps' `Record Feature` function, ensuring all GCP features are recorded within the only layer of your new Project. For best results, make sure each ground control point is at least 30 meters from its nearest neighboring point.
-2. **Export the list of outdoor ground control points as a zipped comma separated values (CSV) file.** Share/Export your project in SW maps containing the list of control points as a zipped CSV file
+2. **Export the list of outdoor ground control points as a Zipped comma separated values (CSV) file.** Share/Export your project in SW maps containing the list of control points as a Zipped CSV file
 3. **Calibrate your drone's magnetometer (compass) sensor**: Consult your drone's operation manual for this procedure. Calibration for the local magnetic environment is critical for obtaining accurate heading information from the drone camera. Lack of calibration can cause heading inaccuracy of up to 10° or more. It is important to perform this procedure away from any ferrous (magnetic) metal such as steel.
 4. **Take drone photos of your ground control points from multiple slant angles, focal length/zoom, orientations, and drone models (if available)**. Take as many photos as possible from your drone(s) of your outdoor ground control points. For experimentation, it is desirable to vary the slant angle (downward pitch) of the camera to several values.
 
@@ -49,6 +49,8 @@ The following steps may be performed after experimental data from the field is c
 ### Overview
 
 The R script `Analyze-OA-CoT-and-GCP-csv-data.R` loads the captured CoT data and ground control point data to conduct various statistical analyses. It calculates horizontal and vertical errors and examines the dependency of these errors on various factors like slant angle, camera make, model, and focal length.
+
+Another R script `Analyze-OA-Core-CoT-and-GCP-csv-data.R` is available providing similar functionality for CoT data recorded originating from [OpenAthena Core](https://theta.limited/openathena-core/)
 
 ### Requirements
 
