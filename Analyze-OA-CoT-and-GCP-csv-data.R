@@ -33,10 +33,10 @@ radius_at_lat_lon <- function(lat, lon) {
 }
 
 ## Load Cursor on Target openAthenaCalculationInfo data from CSV file
-cot_data <- read.csv("path/to/your/OA-CoT-Capture-file.csv")
+cot_data <- read.csv("~/Dropbox/2023-2024/Livery/EastRoswellTest01/OA-CoT-Capture-2024-05-30T20-37-32-938191+00-00.csv")
 ## Load GCP data from a ZIP file containing inner CSV file
 ## User note: remove unzip() operation if operating directly on csv file
-gcp_data <- read.csv(unzip("path/to/your/ground_control_points_from_sw_maps.zip", files = NULL))
+gcp_data <- read.csv(unzip("~/Dropbox/2023-2024/Livery/EastRoswellTest01/east Roswell BB Field CSV.zip", files = NULL))
 
 # Find nearest GCP for each CoT capture and calculate distances
 cot_data <- cot_data %>%
@@ -51,6 +51,13 @@ cot_data <- cot_data %>%
     drone_to_gcp_vertical_distance = abs(droneElevationHAE - gcp_data$Elevation[nearest_gcp]),
     distance_ratio =  drone_to_gcp_vertical_distance / drone_to_gcp_horizontal_distance
   )
+
+# -----------------------------------------------------------------------------
+# Calculate slant distance (hypotenuse) from drone to GCP
+# -----------------------------------------------------------------------------
+cot_data$drone_to_gcp_slant_range <- with(cot_data,
+                                           +  sqrt(drone_to_gcp_horizontal_distance^2 +
+                                                     +       drone_to_gcp_vertical_distance^2))
 
 # Calculate circular and vertical errors
 cot_data$horizontal_error <- mapply(haversine, cot_data$lon, cot_data$lat, gcp_data$Longitude[cot_data$nearest_gcp], gcp_data$Latitude[cot_data$nearest_gcp], MoreArgs = list(alt = 0))
@@ -238,42 +245,58 @@ plot(vertical_model)
 #             coeff["(Intercept)"], coeff["drone_to_gcp_horizontal_distance"], coeff["raySlantAngleDeg"]))
 
 # -----------------------------------------------------------------------------
-# Two Parameter Linear Model: Horizontal Error ~ Horizontal Distance + Distance Ratio
+# Two-Factor Model with Quadratic Distance Ratio
+# Horizontal Error ~ Slant Range + Distance Ratio + (Distance Ratio)^2
 # -----------------------------------------------------------------------------
 
-# Build the two parameter linear model
-two_param_model <- lm(horizontal_error ~ drone_to_gcp_horizontal_distance + distance_ratio, data = cot_data)
+# Build the reduced quadratic model (only distance_ratio^2 added)
+two_param_model <- lm(horizontal_error ~
+                        drone_to_gcp_slant_range +
+                        distance_ratio +
+                        I(distance_ratio^2),
+                      data = cot_data)
+
+# Show fit summary
 summary(two_param_model)
 
-# Print out the coefficients for interpretation and prediction
-cat("Two Parameter Model Coefficients:\n")
-cat(sprintf("Intercept: %.4f\n", coef(two_param_model)[1]))
-cat(sprintf("Coefficient for Horizontal Distance: %.4f\n", coef(two_param_model)[2]))
-cat(sprintf("Coefficient for Distance Ratio: %.4f\n", coef(two_param_model)[3]))
+# Extract & print coefficients for interpretation
+coefs <- coef(two_param_model)
+cat("Reduced Quadratic Model Coefficients:\n")
+cat(sprintf("  Intercept           : %.4f\n", coefs["(Intercept)"]))
+cat(sprintf("  Slant Range         : %.4f\n", coefs["drone_to_gcp_slant_range"]))
+cat(sprintf("  Distance Ratio      : %.4f\n", coefs["distance_ratio"]))
+cat(sprintf("  Distance Ratio^2    : %.4f\n\n", coefs["I(distance_ratio^2)"]))
 
 # -----------------------------------------------------------------------------
-# Function to Predict Horizontal Error Given Horizontal Distance and Ray Slant Angle
+# Function to Predict Horizontal Error Given Slant Range & Ray Slant Angle
 # -----------------------------------------------------------------------------
-# Note: The drone-to-target ray slant angle (in degrees) is related to the distance_ratio
-# by: distance_ratio = tan(ray_slant_angle_deg * pi/180)
-
-predict_horizontal_error <- function(horizontal_distance, ray_slant_angle_deg) {
-  # Convert ray slant angle (degrees) to distance ratio
-  distance_ratio_value <- tan(ray_slant_angle_deg * pi/180)
-  # Calculate predicted horizontal error using the model coefficients
-  predicted_error <- coef(two_param_model)[1] +
-    coef(two_param_model)[2] * horizontal_distance +
-    coef(two_param_model)[3] * distance_ratio_value
-  return(predicted_error)
+predict_horizontal_error <- function(slant_range, ray_slant_angle_deg) {
+  # Convert ray slant angle (degrees) to distance_ratio
+  dr <- tan(ray_slant_angle_deg * pi/180)
+  # Compute prediction
+  pred <- coefs["(Intercept)"] +
+    coefs["drone_to_gcp_slant_range"] * slant_range +
+    coefs["distance_ratio"]       * dr +
+    coefs["I(distance_ratio^2)"]  * dr^2
+  return(pred)
 }
 
 # -----------------------------------------------------------------------------
-# Example Prediction:
+# Example Prediction
 # -----------------------------------------------------------------------------
-# For example, predict the horizontal error for a drone-to-target ray slant angle of 30 degrees
-# and a horizontal distance of 100 meters.
-example_horizontal_distance <- 800  # in meters
-example_ray_slant_angle <- 35         # in degrees
-predicted_error <- predict_horizontal_error(example_horizontal_distance, example_ray_slant_angle)
-cat(sprintf("Predicted Horizontal Error for %d m horizontal distance and %d° ray slant angle: %.4f meters\n",
-            example_horizontal_distance, example_ray_slant_angle, predicted_error))
+example_slant <- 150   # meters
+example_angle <- 85    # degrees
+pred_err <- predict_horizontal_error(example_slant, example_angle)
+cat(sprintf(
+  "Predicted error @ %.1f m slant & %d°: %.4f m\n\n",
+  example_slant, example_angle, pred_err
+))
+
+# -----------------------------------------------------------------------------
+# 4-Panel Diagnostics for the Reduced Model
+# -----------------------------------------------------------------------------
+par(mfrow = c(2,2))
+plot(two_param_model, main = "")
+par(mfrow = c(1,1))
+
+
