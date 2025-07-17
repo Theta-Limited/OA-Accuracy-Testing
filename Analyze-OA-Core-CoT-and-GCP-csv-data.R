@@ -401,9 +401,9 @@ tle_model_slant_ratio_coeff <- if (use_ratio) cf["distance_ratio"] else 0.0
 cat("tle_model_y_intercept:       ",
     sprintf("%.4f\n", tle_model_y_intercept), sep = "")
 cat("tle_model_slant_range_coeff: ",
-    sprintf("%.4f\n", tle_model_slant_range_coeff), sep = "")
+    sprintf("%.6f\n", tle_model_slant_range_coeff), sep = "")
 cat("tle_model_slant_ratio_coeff: ",
-    sprintf("%.4f\n\n", tle_model_slant_ratio_coeff), sep = "")
+    sprintf("%.6f\n\n", tle_model_slant_ratio_coeff), sep = "")
 
 # -----------------------------------------------------------------------------
 # Prediction function (uses whichever model was chosen)
