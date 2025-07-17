@@ -1,4 +1,4 @@
-# Copyright 2024 Theta Informatics LLC
+# Copyright 2025 Theta Informatics LLC
 # Provided under MIT license software license
 # Modification and Redistribution permitted while above notice is preserved
 
@@ -33,10 +33,11 @@ radius_at_lat_lon <- function(lat, lon) {
 }
 
 ## Load Cursor on Target openAthenaCalculationInfo data from CSV file
-cot_data <- read.csv("~/Dropbox/2023-2024/Livery/EastRoswellTest01/OA-CoT-Capture-2024-05-30T20-37-32-938191+00-00.csv")
+cot_data <- read.csv("path/to/your/OA-CoT-Capture-file.csv")
 ## Load GCP data from a ZIP file containing inner CSV file
 ## User note: remove unzip() operation if operating directly on csv file
-gcp_data <- read.csv(unzip("~/Dropbox/2023-2024/Livery/EastRoswellTest01/east Roswell BB Field CSV.zip", files = NULL))
+gcp_data <- read.csv(unzip("path/to/your/ground_control_points_from_sw_maps.zip", files = NULL))
+
 
 # Find nearest GCP for each CoT capture and calculate distances
 cot_data <- cot_data %>%
@@ -245,58 +246,90 @@ plot(vertical_model)
 #             coeff["(Intercept)"], coeff["drone_to_gcp_horizontal_distance"], coeff["raySlantAngleDeg"]))
 
 # -----------------------------------------------------------------------------
-# Two-Factor Model with Quadratic Distance Ratio
-# Horizontal Error ~ Slant Range + Distance Ratio + (Distance Ratio)^2
+# Model fitting with Cook’s Distance removal and conditional two‐ vs. one‐factor model
 # -----------------------------------------------------------------------------
 
-# Build the reduced quadratic model (only distance_ratio^2 added)
-two_param_model <- lm(horizontal_error ~
-                        drone_to_gcp_slant_range +
-                        distance_ratio +
-                        I(distance_ratio^2),
-                      data = cot_data)
+# 1) Fit initial two‐factor model and compute Cook’s distances
+initial_model <- lm(horizontal_error ~ drone_to_gcp_slant_range + distance_ratio,
+                    data = cot_data)
+cooks        <- cooks.distance(initial_model)
+n_total      <- nrow(cot_data)
+p            <- length(coef(initial_model))
+cook_thresh  <- 4 / (n_total - p)
 
-# Show fit summary
-summary(two_param_model)
+# 2) Identify & remove high‐influence points
+high_idx <- which(cooks > cook_thresh)
+n_high   <- length(high_idx)
+n_keep   <- n_total - n_high
 
-# Extract & print coefficients for interpretation
-coefs <- coef(two_param_model)
-cat("Reduced Quadratic Model Coefficients:\n")
-cat(sprintf("  Intercept           : %.4f\n", coefs["(Intercept)"]))
-cat(sprintf("  Slant Range         : %.4f\n", coefs["drone_to_gcp_slant_range"]))
-cat(sprintf("  Distance Ratio      : %.4f\n", coefs["distance_ratio"]))
-cat(sprintf("  Distance Ratio^2    : %.4f\n\n", coefs["I(distance_ratio^2)"]))
+cat(sprintf("Total data points: %d\n",         n_total))
+cat(sprintf("Cook’s D threshold: %.4f\n",     cook_thresh))
+cat(sprintf("Removing %d high‐influence points\n", n_high))
+cat(sprintf("Data points remaining: %d\n\n",    n_keep))
 
-# -----------------------------------------------------------------------------
-# Function to Predict Horizontal Error Given Slant Range & Ray Slant Angle
-# -----------------------------------------------------------------------------
-predict_horizontal_error <- function(slant_range, ray_slant_angle_deg) {
-  # Convert ray slant angle (degrees) to distance_ratio
-  dr <- tan(ray_slant_angle_deg * pi/180)
-  # Compute prediction
-  pred <- coefs["(Intercept)"] +
-    coefs["drone_to_gcp_slant_range"] * slant_range +
-    coefs["distance_ratio"]       * dr +
-    coefs["I(distance_ratio^2)"]  * dr^2
-  return(pred)
+cot_data_filtered <- cot_data[cooks <= cook_thresh, ]
+
+# 3) Refit two‐factor model on filtered data
+model2     <- lm(horizontal_error ~ drone_to_gcp_slant_range + distance_ratio,
+                 data = cot_data_filtered)
+sum2       <- summary(model2)
+pval_ratio <- sum2$coefficients["distance_ratio", "Pr(>|t|)"]
+
+# 4) Decide whether to keep distance_ratio
+if (pval_ratio <= 0.05) {
+  final_model <- model2
+  use_ratio   <- TRUE
+  cat(sprintf("distance_ratio significant (p = %.4f)—using two‐factor model\n\n",
+              pval_ratio))
+} else {
+  cat(sprintf("distance_ratio NOT significant (p = %.4f)—switching to one‐factor model\n\n",
+              pval_ratio))
+  final_model <- lm(horizontal_error ~ drone_to_gcp_slant_range,
+                    data = cot_data_filtered)
+  use_ratio   <- FALSE
 }
 
-# -----------------------------------------------------------------------------
-# Example Prediction
-# -----------------------------------------------------------------------------
-example_slant <- 150   # meters
-example_angle <- 85    # degrees
-pred_err <- predict_horizontal_error(example_slant, example_angle)
-cat(sprintf(
-  "Predicted error @ %.1f m slant & %d°: %.4f m\n\n",
-  example_slant, example_angle, pred_err
-))
+# 5) Extract and report the “tle_model_*” coefficients for inclusion in droneModels.json to tune OpenAthena's target location errror (TLE) estimate
+# See: https://github.com/Theta-Limited/DroneModels
+cf <- coef(final_model)
+tle_model_y_intercept       <- cf[1]
+tle_model_slant_range_coeff <- cf["drone_to_gcp_slant_range"]
+tle_model_slant_ratio_coeff <- if (use_ratio) cf["distance_ratio"] else 0.0
+
+cat("tle_model_y_intercept:       ",
+    sprintf("%.4f\n", tle_model_y_intercept), sep = "")
+cat("tle_model_slant_range_coeff: ",
+    sprintf("%.4f\n", tle_model_slant_range_coeff), sep = "")
+cat("tle_model_slant_ratio_coeff: ",
+    sprintf("%.4f\n\n", tle_model_slant_ratio_coeff), sep = "")
 
 # -----------------------------------------------------------------------------
-# 4-Panel Diagnostics for the Reduced Model
+# Prediction function (uses whichever model was chosen)
 # -----------------------------------------------------------------------------
-par(mfrow = c(2,2))
-plot(two_param_model, main = "")
-par(mfrow = c(1,1))
+predict_horizontal_error <- function(slant_range, ray_slant_angle_deg) {
+  dist_ratio <- tan(ray_slant_angle_deg * pi/180)
+  intercept  <- tle_model_y_intercept
+  sr_coef    <- tle_model_slant_range_coeff
+  dr_coef    <- tle_model_slant_ratio_coeff
+  intercept + sr_coef * slant_range + dr_coef * dist_ratio
+}
+
+# Example prediction
+example_slant <- 300  # meters
+example_angle <- 15   # degrees
+pred_err <- predict_horizontal_error(example_slant, example_angle)
+cat(sprintf("Predicted Horizontal Error for %d m slant & %d° angle: %.4f m\n\n",
+            example_slant, example_angle, pred_err))
+
+# Summary for final_model, whether two factor or one factor
+summary(final_model)
+
+# -----------------------------------------------------------------------------
+# 4-panel diagnostic plots for the chosen model
+# -----------------------------------------------------------------------------
+par(mfrow = c(2, 2))
+plot(final_model)
+par(mfrow = c(1, 1))
+
 
 
