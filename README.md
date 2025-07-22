@@ -8,7 +8,8 @@ This repository contains tools for capturing and analyzing Cursor on Target (CoT
 ## Contents
 
 1. **CoT_Listener_Athena_Filtered_to_csv_file_with_calculation_info.py**: A Python script to listen for multicast UDP messages and dump the relevant data into a CSV file.
-2. **Analyze-OA-CoT-and-GCP-csv-data.R**: An R script to analyze the CoT data against GCP data to understand the accuracy and performance of the terrain-raycast technique.
+2. **Analyze-OA-Android-CoT-and-GCP-csv-data.R**: An R script to analyze CoT data output from OpenAthena for Android (with extended debug CoT mode enabled) against GCP data to understand the accuracy and performance of the terrain-raycast technique.
+3. **Analyze-OA-Core-CoT-and_GCP-csv-data.R**: An equivalent R script to analyze CoT data output from OpenAthena Core (with extended debug CoT mode enabled)
 
 ## CoT_Listener_Athena_Filtered_to_csv_file_with_calculation_info.py
 
@@ -52,11 +53,11 @@ The following steps may be performed after experimental data from the field is c
 5. **Use OpenAthena for Android to obtain target calculations for each ground control point of each image**: Using the OpenAthena for Android app, for each grond control point of each image mark the pixel of the ground control point within the image and send it as a CoT message using the "✉️" button. The R script for post-processing analysis will automatically match your calculation output to the nearest ground control point.
 6. **Run Analysis**: Execute the script in an R environment (such as [R-studio](https://posit.co/products/open-source/rstudio/))  to perform statistical analysis. The script will output plots and regression analysis results to understand the impact of various factors on measurement accuracy.
 
-## Analyze-OA-CoT-and-GCP-csv-data.R
+## Analyze-OA-Android-CoT-and-GCP-csv-data.R
 
 ### Overview
 
-The R script `Analyze-OA-CoT-and-GCP-csv-data.R` loads the captured CoT data and ground control point data to conduct various statistical analyses. It calculates horizontal and vertical errors and examines the dependency of these errors on various factors like slant angle, camera make, model, and focal length.
+The R script `Analyze-OA-Android-CoT-and-GCP-csv-data.R loads the captured CoT data and ground control point data to conduct various statistical analyses. It calculates horizontal and vertical errors and examines the dependency of these errors on various factors like slant angle, camera make, model, and focal length.
 
 Another R script `Analyze-OA-Core-CoT-and-GCP-csv-data.R` is available providing similar functionality for CoT data recorded originating from [OpenAthena Core](https://theta.limited/openathena-core/)
 
@@ -73,6 +74,25 @@ Another R script `Analyze-OA-Core-CoT-and-GCP-csv-data.R` is available providing
 source('Analyze-OA-CoT-and-GCP-csv-data.R')
 ```
 
+### Obtaining target location error model parameters for inclusion in [droneModels.json](https://github.com/Theta-Limited/DroneModels)
+
+All versions of OpenAthena now use a one factor linear model which predicts target location error (TLE) using slant range from drone to target.
+
+Each drone has a subtly-different magnitude of increase in TLE per unit of range. 
+
+The TLE estimation linear model for each drone model is defined by two parameters in droneModels.json:
+
+* `tle_model_y_intercept` representing the starting value for target location error, e.g. if slant range is 0. This is usually around 5.25 meters, which may be attributed to the (in)accuracy of common GPS units.
+* `tle_model_slant_range_coeff` representing how much (in meters) each additional meter of distance adds to target location error for this drone. Slant range has routinely been observed as the primary factor influencing target location error. Values between 0.02 and 0.035 meters error per meter distance are typical.
+
+The end of this R script calculates these two parameters from your test data with a given drone model. It works by filtering out outliers by Cook’s Distance, then fiting a one factor linear model to the remaining data points.
+
+For more information, read the code at the end of this R script.
+
+A reference is also available in the README.md for DroneModels:
+
+https://github.com/Theta-Limited/DroneModels?tab=readme-ov-file#target-location-error-tle-estimation-model-parameters
+
 ## Getting Started
 
-To get started, clone this repository and ensure you have the necessary dependencies installed for both Python and R. Perform the experimental data collection, Update the scripts with paths to your specific data files, and run them according to the usage instructions provided above.
+To get started, clone this repository and ensure you have the necessary dependencies installed for both Python and R. Perform the experimental data collection, **Update the scripts with paths to your specific data files**, and run them according to the usage instructions provided above.
