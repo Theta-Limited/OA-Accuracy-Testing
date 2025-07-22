@@ -102,7 +102,10 @@ summary(vertical_model)
 slope_model <- lm(horizontal_error ~ drone_to_gcp_horizontal_distance, data = cot_data)
 
 # Extract the slope coefficient
+# simple slope model without outlier removal. Not to be used for droneModels.json!
 slope <- coef(slope_model)["drone_to_gcp_horizontal_distance"]
+# Print diagnostic info for simple slope model without outlier removal
+# summary(slope_model)
 
 # Extract the confidence interval for the slope
 conf_interval <- confint(slope_model, "drone_to_gcp_horizontal_distance", level = 0.95)
@@ -229,27 +232,12 @@ par(mfrow=c(2,2))
 plot(horizontal_model)
 plot(vertical_model)
 
-# # Two-parameter linear model: Horizontal Error ~ Horizontal Distance + Ray Slant Angle
-# two_param_model <- lm(horizontal_error ~ drone_to_gcp_horizontal_distance + distance_ratio, data = cot_data)
-# summary(two_param_model)
-#
-# # Extract the coefficients from the two-parameter model
-# coeff <- coef(two_param_model)
-# cat(sprintf("Two-Parameter Model Coefficients:\n"))
-# cat(sprintf("  Intercept: %.4f\n", coeff["(Intercept)"]))
-# cat(sprintf("  Horizontal Distance Coefficient: %.4f\n", coeff["drone_to_gcp_horizontal_distance"]))
-# cat(sprintf("  Ray Slant Angle Coefficient: %.4f\n", coeff["raySlantAngleDeg"]))
-#
-# # Display the prediction formula
-# cat(sprintf("\nPrediction Formula:\n  horizontal_error = %.4f + (%.4f * drone_to_gcp_horizontal_distance) + (%.4f * raySlantAngleDeg)\n",
-#             coeff["(Intercept)"], coeff["drone_to_gcp_horizontal_distance"], coeff["raySlantAngleDeg"]))
-
 # -----------------------------------------------------------------------------
-# Model fitting with Cook’s Distance removal and conditional two‐ vs. one‐factor model
+# Model fitting with Cook’s Distance removal
 # -----------------------------------------------------------------------------
 
 # 1) Fit initial two‐factor model and compute Cook’s distances
-initial_model <- lm(horizontal_error ~ drone_to_gcp_slant_range + distance_ratio,
+initial_model <- lm(horizontal_error ~ drone_to_gcp_slant_range,
                     data = cot_data)
 cooks        <- cooks.distance(initial_model)
 n_total      <- nrow(cot_data)
@@ -268,67 +256,71 @@ cat(sprintf("Data points remaining: %d\n\n",    n_keep))
 
 cot_data_filtered <- cot_data[cooks <= cook_thresh, ]
 
-# 3) Refit two‐factor model on filtered data
-model2     <- lm(horizontal_error ~ drone_to_gcp_slant_range + distance_ratio,
-                 data = cot_data_filtered)
-sum2       <- summary(model2)
-pval_ratio <- sum2$coefficients["distance_ratio", "Pr(>|t|)"]
+final_model <- lm(horizontal_error ~ drone_to_gcp_slant_range,
+                  data = cot_data_filtered)
 
-# 4) Decide whether to keep distance_ratio
-if (pval_ratio <= 0.05) {
-  final_model <- model2
-  use_ratio   <- TRUE
-  cat(sprintf("distance_ratio significant (p = %.4f)—using two‐factor model\n\n",
-              pval_ratio))
-} else {
-  cat(sprintf("distance_ratio NOT significant (p = %.4f)—switching to one‐factor model\n\n",
-              pval_ratio))
-  final_model <- lm(horizontal_error ~ drone_to_gcp_slant_range,
-                    data = cot_data_filtered)
-  use_ratio   <- FALSE
-}
-
-# 5) Extract and report the “tle_model_*” coefficients for inclusion in droneModels.json to tune OpenAthena's target location errror (TLE) estimate
+# 3) Extract and report the “tle_model_*” y intercept and slant range coeff for inclusion in droneModels.json to tune OpenAthena's target location errror (TLE) estimate
 # See: https://github.com/Theta-Limited/DroneModels
 cf <- coef(final_model)
 tle_model_y_intercept       <- cf[1]
 tle_model_slant_range_coeff <- cf["drone_to_gcp_slant_range"]
-tle_model_slant_ratio_coeff <- if (use_ratio) cf["distance_ratio"] else 0.0
 
 cat("tle_model_y_intercept:       ",
     sprintf("%.4f\n", tle_model_y_intercept), sep = "")
 cat("tle_model_slant_range_coeff: ",
     sprintf("%.6f\n", tle_model_slant_range_coeff), sep = "")
-cat("tle_model_slant_ratio_coeff: ",
-    sprintf("%.6f\n\n", tle_model_slant_ratio_coeff), sep = "")
 
 # -----------------------------------------------------------------------------
-# Prediction function (uses whichever model was chosen)
+# Prediction function
 # -----------------------------------------------------------------------------
-predict_horizontal_error <- function(slant_range, ray_slant_angle_deg) {
-  dist_ratio <- tan(ray_slant_angle_deg * pi/180)
+predict_horizontal_error <- function(slant_range) {
   intercept  <- tle_model_y_intercept
   sr_coef    <- tle_model_slant_range_coeff
-  dr_coef    <- tle_model_slant_ratio_coeff
-  intercept + sr_coef * slant_range + dr_coef * dist_ratio
+  intercept + sr_coef * slant_range
 }
 
 # Example prediction
-example_slant <- 300  # meters
-example_angle <- 15   # degrees
-pred_err <- predict_horizontal_error(example_slant, example_angle)
-cat(sprintf("Predicted Horizontal Error for %d m slant & %d° angle: %.4f m\n\n",
-            example_slant, example_angle, pred_err))
+example_slant <- 600  # meters
+pred_err <- predict_horizontal_error(example_slant)
+cat(sprintf("Predicted Horizontal Error for %d m slant range: %.4f m\n\n",
+            example_slant, pred_err))
 
 # Summary for final_model, whether two factor or one factor
 summary(final_model)
 
 # -----------------------------------------------------------------------------
-# 4-panel diagnostic plots for the chosen model
+# 4-panel diagnostic plots for the model
 # -----------------------------------------------------------------------------
 par(mfrow = c(2, 2))
 plot(final_model)
 par(mfrow = c(1, 1))
 
-
+# # 1) Compute theta (radians & degrees) and the “old formula” estimate
+# LINEAR_ERROR <- 5.9  # from ASEJ 2017
+# cot_data <- cot_data %>%
+#   mutate(
+#     theta_rad    = atan2(drone_to_gcp_vertical_distance,
+#                          drone_to_gcp_horizontal_distance),
+#     theta_deg    = theta_rad * 180 / pi,
+#     old_estimate = abs(1 / tan(theta_rad) * LINEAR_ERROR)
+#   )
+# 
+# # 2) Define and fit each model
+# model_list <- list(
+#   old_formula      = lm(horizontal_error ~ old_estimate,                data = cot_data),
+#   slant_range      = lm(horizontal_error ~ drone_to_gcp_slant_range,    data = cot_data),
+#   ray_slant_angle  = lm(horizontal_error ~ raySlantAngleDeg,            data = cot_data),
+#   distance_ratio   = lm(horizontal_error ~ distance_ratio,              data = cot_data),
+#   slant_plus_angle = lm(horizontal_error ~ drone_to_gcp_slant_range +
+#                           raySlantAngleDeg,          data = cot_data),
+#   slant_plus_ratio = lm(horizontal_error ~ drone_to_gcp_slant_range +
+#                           distance_ratio,            data = cot_data)
+# )
+# 
+# # 3) Summarize each model for easy comparison
+# for (nm in names(model_list)) {
+#   cat("==== Model:", nm, "====\n")
+#   print(summary(model_list[[nm]]))
+#   cat("\n")
+# }
 
