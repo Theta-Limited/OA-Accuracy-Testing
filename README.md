@@ -57,7 +57,7 @@ The following steps may be performed after experimental data from the field is c
 
 ### Overview
 
-The R script `Analyze-OA-Android-CoT-and-GCP-csv-data.R loads the captured CoT data and ground control point data to conduct various statistical analyses. It calculates horizontal and vertical errors and examines the dependency of these errors on various factors like slant angle, camera make, model, and focal length.
+The R script `Analyze-OA-Android-CoT-and-GCP-csv-data.R` loads the captured CoT data and ground control point data to conduct various statistical analyses. It calculates horizontal and vertical errors and examines the dependency of these errors on various factors like slant angle, camera make, model, and focal length.
 
 Another R script `Analyze-OA-Core-CoT-and-GCP-csv-data.R` is available providing similar functionality for CoT data recorded originating from [OpenAthena Core](https://theta.limited/openathena-core/)
 
@@ -78,7 +78,7 @@ source('Analyze-OA-CoT-and-GCP-csv-data.R')
 
 All versions of OpenAthena now use a one factor linear model which predicts target location error (TLE) using slant range from drone to target.
 
-Each drone has a subtly-different magnitude of increase in TLE per unit of range. 
+Each drone has a subtly-different magnitude of increase in TLE per unit of range.
 
 The TLE estimation linear model for each drone model is defined by two parameters in droneModels.json:
 
